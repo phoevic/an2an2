@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>오늘 뭐 먹지? 🍚 + 음식 갤러그</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background: #fff7e6;
+    }
+    h1 {
+        margin-top: 20px;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+    #menuResult {
+        font-size: 20px;
+        margin: 15px;
+        font-weight: bold;
+    }
+    canvas {
+        background: #000;
+        display: block;
+        margin: 0 auto;
+        border: 3px solid #333;
+    }
+</style>
+</head>
+<body>
+
+<h1>🍚 오늘 뭐 먹지?</h1>
+<button onclick="recommendMenu()">밥 메뉴 추천!</button>
+<div id="menuResult">버튼을 눌러보세요 🍴</div>
+
+<h1>🎮 음식 갤러그</h1>
+<canvas id="gameCanvas" width="400" height="500"></canvas>
+<p>← → 이동 | Space 발사</p>
+
+<script>
+/* ===== 밥 메뉴 추천 ===== */
+const menus = [
+    "김치찌개",
+    "돈까스",
+    "비빔밥",
+    "라면",
+    "치킨",
+    "햄버거",
+    "초밥",
+    "떡볶이"
+];
+
+function recommendMenu() {
+    const randomMenu = menus[Math.floor(Math.random() * menus.length)];
+    document.getElementById("menuResult").innerText =
+        "👉 오늘의 추천 메뉴: " + randomMenu;
+}
+
+/* ===== 갤러그 게임 ===== */
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let player = { x: 180, y: 450, width: 40, height: 20 };
+let bullets = [];
+let enemies = [];
+let score = 0;
+
+const foodEmojis = ["🍕", "🍔", "🍜", "🍣", "🍩"];
+
+document.addEventListener("keydown", movePlayer);
+document.addEventListener("keyup", stopPlayer);
+
+let rightPressed = false;
+let leftPressed = false;
+
+function movePlayer(e) {
+    if (e.key === "ArrowRight") rightPressed = true;
+    if (e.key === "ArrowLeft") leftPressed = true;
+    if (e.key === " ") {
+        bullets.push({ x: player.x + 18, y: player.y });
+    }
+}
+
+function stopPlayer(e) {
+    if (e.key === "ArrowRight") rightPressed = false;
+    if (e.key === "ArrowLeft") leftPressed = false;
+}
+
+function createEnemy() {
+    enemies.push({
+        x: Math.random() * 360,
+        y: 0,
+        emoji: foodEmojis[Math.floor(Math.random() * foodEmojis.length)]
+    });
+}
+
+function update() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 플레이어 이동
+    if (rightPressed && player.x < canvas.width - player.width) player.x += 5;
+    if (leftPressed && player.x > 0) player.x -= 5;
+
+    // 플레이어 그리기
+    ctx.fillStyle = "white";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // 총알
+    bullets.forEach((b, i) => {
+        b.y -= 7;
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(b.x, b.y, 4, 10);
+        if (b.y < 0) bullets.splice(i, 1);
+    });
+
+    // 적
+    enemies.forEach((e, ei) => {
+        e.y += 2;
+        ctx.font = "24px serif";
+        ctx.fillText(e.emoji, e.x, e.y);
+
+        // 충돌 검사
+        bullets.forEach((b, bi) => {
+            if (
+                b.x > e.x &&
+                b.x < e.x + 24 &&
+                b.y > e.y - 24 &&
+                b.y < e.y
+            ) {
+                enemies.splice(ei, 1);
+                bullets.splice(bi, 1);
+                score += 10;
+            }
+        });
+
+        if (e.y > canvas.height) enemies.splice(ei, 1);
+    });
+
+    // 점수
+    ctx.fillStyle = "white";
+    ctx.font = "16px Arial";
+    ctx.fillText("Score: " + score, 10, 20);
+
+    requestAnimationFrame(update);
+}
+
+// 적 생성 주기
+setInterval(createEnemy, 1000);
+update();
+</script>
+
+</body>
+</html>
