@@ -2,154 +2,168 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>오늘 뭐 먹지? 🍚 + 음식 갤러그</title>
+<title>밥 추천 + 음식 갤러그</title>
 <style>
     body {
-        font-family: Arial, sans-serif;
         text-align: center;
-        background: #fff7e6;
-    }
-    h1 {
-        margin-top: 20px;
-    }
-    button {
-        padding: 10px 20px;
-        font-size: 16px;
-        cursor: pointer;
-        margin-bottom: 20px;
-    }
-    #menuResult {
-        font-size: 20px;
-        margin: 15px;
-        font-weight: bold;
+        background: #fff3d6;
+        font-family: Arial, sans-serif;
     }
     canvas {
-        background: #000;
+        background: black;
         display: block;
-        margin: 0 auto;
+        margin: 10px auto;
         border: 3px solid #333;
+    }
+    button {
+        padding: 10px 15px;
+        margin: 5px;
+        font-size: 16px;
+        cursor: pointer;
     }
 </style>
 </head>
 <body>
 
 <h1>🍚 오늘 뭐 먹지?</h1>
-<button onclick="recommendMenu()">밥 메뉴 추천!</button>
-<div id="menuResult">버튼을 눌러보세요 🍴</div>
+<button onclick="recommendMenu()">밥 메뉴 추천</button>
+<div id="menuResult"></div>
 
-<h1>🎮 음식 갤러그</h1>
+<hr>
+
+<h2>🎮 캐릭터 선택</h2>
+<button onclick="selectCharacter('🚀')">🚀 우주선</button>
+<button onclick="selectCharacter('🍽️')">🍽️ 접시</button>
+<button onclick="selectCharacter('🐱')">🐱 고양이</button>
+
+<h3 id="selectedChar">선택된 캐릭터: 없음</h3>
+
 <canvas id="gameCanvas" width="400" height="500"></canvas>
 <p>← → 이동 | Space 발사</p>
 
 <script>
-/* ===== 밥 메뉴 추천 ===== */
-const menus = [
-    "김치찌개",
-    "돈까스",
-    "비빔밥",
-    "라면",
-    "치킨",
-    "햄버거",
-    "초밥",
-    "떡볶이"
-];
-
+/* ===== 메뉴 추천 ===== */
+const menus = ["김치찌개","돈까스","라면","초밥","치킨","비빔밥","햄버거"];
 function recommendMenu() {
-    const randomMenu = menus[Math.floor(Math.random() * menus.length)];
-    document.getElementById("menuResult").innerText =
-        "👉 오늘의 추천 메뉴: " + randomMenu;
+    menuResult.innerText =
+        "👉 오늘의 추천 메뉴: " + menus[Math.floor(Math.random()*menus.length)];
 }
 
-/* ===== 갤러그 게임 ===== */
+/* ===== 효과음 ===== */
+const shootSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+const hitSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+const gameOverSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+
+/* ===== 게임 ===== */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let player = { x: 180, y: 450, width: 40, height: 20 };
+let playerChar = "";
+let player = { x: 180, y: 450 };
 let bullets = [];
 let enemies = [];
 let score = 0;
+let lives = 3;
+let gameOver = false;
 
-const foodEmojis = ["🍕", "🍔", "🍜", "🍣", "🍩"];
+const foods = ["🍕","🍔","🍜","🍣","🍩"];
 
-document.addEventListener("keydown", movePlayer);
-document.addEventListener("keyup", stopPlayer);
+function selectCharacter(char) {
+    playerChar = char;
+    document.getElementById("selectedChar").innerText =
+        "선택된 캐릭터: " + char;
+}
 
-let rightPressed = false;
-let leftPressed = false;
+/* 키 입력 */
+document.addEventListener("keydown", e => {
+    if (gameOver || !playerChar) return;
 
-function movePlayer(e) {
-    if (e.key === "ArrowRight") rightPressed = true;
-    if (e.key === "ArrowLeft") leftPressed = true;
+    if (e.key === "ArrowLeft" && player.x > 0) player.x -= 15;
+    if (e.key === "ArrowRight" && player.x < 360) player.x += 15;
     if (e.key === " ") {
-        bullets.push({ x: player.x + 18, y: player.y });
+        bullets.push({ x: player.x + 10, y: player.y });
+        shootSound.play();
     }
-}
+});
 
-function stopPlayer(e) {
-    if (e.key === "ArrowRight") rightPressed = false;
-    if (e.key === "ArrowLeft") leftPressed = false;
-}
-
-function createEnemy() {
-    enemies.push({
-        x: Math.random() * 360,
-        y: 0,
-        emoji: foodEmojis[Math.floor(Math.random() * foodEmojis.length)]
-    });
+function spawnEnemy() {
+    if (!gameOver && playerChar)
+        enemies.push({
+            x: Math.random()*360,
+            y: 0,
+            emoji: foods[Math.floor(Math.random()*foods.length)]
+        });
 }
 
 function update() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // 플레이어 이동
-    if (rightPressed && player.x < canvas.width - player.width) player.x += 5;
-    if (leftPressed && player.x > 0) player.x -= 5;
+    if (!playerChar) {
+        ctx.fillStyle = "white";
+        ctx.font = "20px Arial";
+        ctx.fillText("캐릭터를 선택하세요!", 100, 250);
+        requestAnimationFrame(update);
+        return;
+    }
 
-    // 플레이어 그리기
-    ctx.fillStyle = "white";
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "30px Arial";
+        ctx.fillText("GAME OVER", 100, 250);
+        ctx.font = "18px Arial";
+        ctx.fillText("점수: " + score, 150, 290);
+        return;
+    }
 
-    // 총알
-    bullets.forEach((b, i) => {
-        b.y -= 7;
-        ctx.fillStyle = "yellow";
-        ctx.fillRect(b.x, b.y, 4, 10);
-        if (b.y < 0) bullets.splice(i, 1);
+    /* 플레이어 */
+    ctx.font = "30px serif";
+    ctx.fillText(playerChar, player.x, player.y);
+
+    /* 총알 */
+    bullets.forEach((b,i)=>{
+        b.y -= 8;
+        ctx.fillStyle="yellow";
+        ctx.fillRect(b.x,b.y,4,10);
+        if(b.y<0) bullets.splice(i,1);
     });
 
-    // 적
-    enemies.forEach((e, ei) => {
+    /* 적 */
+    enemies.forEach((e,ei)=>{
         e.y += 2;
-        ctx.font = "24px serif";
-        ctx.fillText(e.emoji, e.x, e.y);
+        ctx.font="26px serif";
+        ctx.fillText(e.emoji,e.x,e.y);
 
-        // 충돌 검사
-        bullets.forEach((b, bi) => {
-            if (
-                b.x > e.x &&
-                b.x < e.x + 24 &&
-                b.y > e.y - 24 &&
-                b.y < e.y
-            ) {
-                enemies.splice(ei, 1);
-                bullets.splice(bi, 1);
-                score += 10;
+        // 충돌
+        bullets.forEach((b,bi)=>{
+            if(b.x>e.x && b.x<e.x+24 && b.y>e.y-24 && b.y<e.y){
+                enemies.splice(ei,1);
+                bullets.splice(bi,1);
+                score+=10;
+                hitSound.play();
             }
         });
 
-        if (e.y > canvas.height) enemies.splice(ei, 1);
+        // 바닥 도달
+        if(e.y>canvas.height){
+            enemies.splice(ei,1);
+            lives--;
+            if(lives<=0){
+                gameOver=true;
+                gameOverSound.play();
+            }
+        }
     });
 
-    // 점수
-    ctx.fillStyle = "white";
-    ctx.font = "16px Arial";
-    ctx.fillText("Score: " + score, 10, 20);
+    /* UI */
+    ctx.fillStyle="white";
+    ctx.font="16px Arial";
+    ctx.fillText("Score: "+score,10,20);
+    ctx.fillText("Lives: ❤️".repeat(lives),300,20);
 
     requestAnimationFrame(update);
 }
 
-// 적 생성 주기
-setInterval(createEnemy, 1000);
+setInterval(spawnEnemy,1000);
 update();
 </script>
 
